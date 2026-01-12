@@ -1,0 +1,170 @@
+/* Base panel */
+#infocuria-helper {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 13px;
+  color: #111;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+}
+
+/* Docked as a third column inside the results layout */
+#infocuria-helper.ih-docked {
+  position: sticky;
+  top: var(--ih-docked-top, 0px);
+  height: calc(100vh - var(--ih-docked-top, 0px));
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  border-top: none;
+  border-bottom: none;
+  border-right: none;
+  box-shadow: none;
+}
+
+#infocuria-helper.ih-docked .ih-body {
+  overflow: auto;
+  flex: 1;
+  user-select: text;
+}
+
+#infocuria-helper .ih-ref,
+#infocuria-helper .ih-toc {
+  user-select: text;
+}
+
+/* Fallback floating (mobile / when we can't dock) */
+#infocuria-helper.ih-floating {
+  position: fixed;
+  top: 120px;
+  right: 24px;
+  width: 420px;
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  z-index: 2147483647;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+#infocuria-helper .ih-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#infocuria-helper .ih-title {
+  font-weight: 600;
+  flex: 1;
+}
+
+#infocuria-helper button {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: white;
+  color: #111;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#infocuria-helper button:hover {
+  background: #f6f7f8;
+}
+
+#infocuria-helper .ih-body {
+  padding: 10px 12px;
+}
+
+#infocuria-helper .ih-ref {
+  line-height: 1.35;
+}
+
+#infocuria-helper .ih-ref a {
+  color: #0b5bd3;
+  text-decoration: none;
+}
+
+#infocuria-helper .ih-ref a:hover {
+  text-decoration: underline;
+}
+
+#infocuria-helper .ih-toc-title {
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+#infocuria-helper ul {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+#infocuria-helper li {
+  margin: 4px 0;
+}
+
+#infocuria-helper .ih-muted {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+/* Splitters between columns */
+.ih-splitter {
+  flex: 0 0 12px;
+  cursor: col-resize;
+  position: relative;
+  user-select: none;
+  touch-action: none;
+  align-self: stretch;
+  z-index: 2147483646;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.ih-splitter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: rgba(0, 0, 0, 0.10);
+}
+
+.ih-splitter::after {
+  /* Slightly larger visual grip */
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: 4px;
+  width: 4px;
+  height: 20%;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.10);
+}
+
+.ih-splitter:hover::before,
+.ih-splitter.ih-active::before {
+  background: rgba(11, 91, 211, 0.55);
+}
+
+.ih-splitter:hover::after,
+.ih-splitter.ih-active::after {
+  background: rgba(11, 91, 211, 0.55);
+}
+
+/* During dragging, force the resize cursor and avoid text selection */
+.ih-resizing,
+.ih-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* Highlighting inside the Infocuria document preview */
+#panel-document-preview p .ih-hl-yellow {
+  background: #fff3a6;
+}
+
+#panel-document-preview p .ih-hl-blue {
+  background: #9fe6ff;
+}

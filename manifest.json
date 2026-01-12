@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Infocuria Helper (citation & PDF)",
+  "version": "0.1.0",
+  "description": "Adds a citation panel, copy helper, and PDF download shortcut on Infocuria judgment pages.",
+  "permissions": ["downloads", "clipboardWrite"],
+  "host_permissions": [
+    "https://infocuria.curia.europa.eu/*",
+    "https://eur-lex.europa.eu/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://infocuria.curia.europa.eu/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Infocuria Helper"
+  }
+}
