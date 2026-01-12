@@ -165,10 +165,11 @@ button[aria-label="Fermer"][aria-describedby="sheet-header-tooltip-close"] {
   flex: 0 0 12px;
   cursor: col-resize;
   position: relative;
+  pointer-events: auto !important;
   user-select: none;
   touch-action: none;
   align-self: stretch;
-  z-index: 2147483646;
+  z-index: 2147483647;
   background: rgba(0, 0, 0, 0.02);
 }
 

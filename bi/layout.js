@@ -67,6 +67,8 @@
     // Allow panels to shrink when the viewport becomes narrower.
     el.style.setProperty('flex', `0 1 ${BI.px(valuePx)}`, 'important');
     el.style.setProperty('max-width', BI.px(valuePx), 'important');
+    // Allow flex items to actually shrink inside a constrained row.
+    el.style.setProperty('min-width', '0px', 'important');
   }
 
   function ensureSplitter(id) {
@@ -97,15 +99,61 @@
     return btns.find((b) => /masquer\s+les\s+filtres|afficher\s+les\s+filtres/i.test((b.textContent || '').trim())) || null;
   }
 
+  function findMobileReturnButton() {
+    // Narrow/mobile layout shows a "Retour" button instead of the filters toggle.
+    const byId = document.querySelector('#close-information-button button');
+    if (byId) return byId;
+    const btns = Array.from(document.querySelectorAll('button'));
+    return btns.find((b) => /\bretour\b/i.test((b.textContent || '').trim())) || null;
+  }
+
+  function findAnyFilterButton() {
+    return (
+      findFilterToggleButton() ||
+      document.querySelector('button[aria-label*="filtres" i]') ||
+      Array.from(document.querySelectorAll('button')).find((b) => /\bfiltres\b/i.test((b.textContent || '').trim())) ||
+      null
+    );
+  }
+
   function ensureLayoutToggles(panes, panelEl) {
     const hostBtn = findFilterToggleButton();
-    const container =
-      hostBtn?.parentElement ||
-      document.getElementById('main-content') ||
-      document.querySelector('main') ||
-      document.body;
+    const returnBtn = findMobileReturnButton();
+    const anchorBtn = hostBtn || returnBtn;
 
     let wrap = document.getElementById('ih-layout-toggles');
+
+    // Never attach our button group into #main-content (it is the flex container that holds panes).
+    // If neither the filters toggle nor the Retour button is available yet, don't create/move.
+    if (!anchorBtn) {
+      if (wrap) {
+        // Still update labels/visibility based on current state.
+        const btnFilters = wrap.querySelector('#ih-toggle-filters');
+        const btnResults = wrap.querySelector('#ih-toggle-results');
+        const btnHelper = wrap.querySelector('#ih-toggle-helper');
+        const btnScroll = wrap.querySelector('#ih-scroll-to-doc');
+        const setBtnLabel = (btn, label, iconClass) => {
+          if (!btn) return;
+          const iconEl = btn.querySelector('.icon-left i');
+          if (iconEl && iconClass) iconEl.className = iconClass;
+          const iconLeft = btn.querySelector('.icon-left');
+          btn.textContent = '';
+          if (iconLeft) btn.appendChild(iconLeft);
+          btn.appendChild(document.createTextNode(` ${label} `));
+        };
+        setBtnLabel(btnFilters, 'Filtres', 'bi bi-funnel');
+        setBtnLabel(btnResults, hideResults ? 'Afficher les résultats' : 'Masquer les résultats', 'bi bi-list-ul');
+        setBtnLabel(btnHelper, hideHelper ? 'Afficher Better Infocuria' : 'Masquer Better Infocuria', 'bi bi-layout-sidebar-inset');
+        setBtnLabel(btnScroll, 'Aller au document', 'bi bi-arrow-down');
+
+        if (btnResults) btnResults.style.display = panes?.listPane ? '' : 'none';
+        if (btnHelper) btnHelper.style.display = panelEl ? '' : 'none';
+        if (btnFilters) btnFilters.style.display = findAnyFilterButton() ? '' : 'none';
+      }
+      return;
+    }
+
+    const container = anchorBtn.parentElement;
     if (!wrap) {
       wrap = document.createElement('div');
       wrap.id = 'ih-layout-toggles';
@@ -114,13 +162,14 @@
       const mkBtn = (id, label, iconClass) => {
         // IMPORTANT: Infocuria uses Angular emulated encapsulation (scoped styles on _ngcontent-*).
         // To get identical styling, clone the existing filter button so those attributes carry over.
-        const b = (hostBtn ? hostBtn.cloneNode(true) : document.createElement('button'));
+        const tpl = hostBtn || returnBtn;
+        const b = (tpl ? tpl.cloneNode(true) : document.createElement('button'));
         b.type = 'button';
         b.id = id;
         b.tabIndex = 0;
         b.setAttribute('aria-disabled', 'false');
         b.classList.add('ih-layout-toggle');
-        if (!hostBtn) {
+        if (!tpl) {
           b.className = 'curia-button curia-button--md curia-button--tertiary ih-layout-toggle';
           const iconLeft = document.createElement('i');
           iconLeft.className = 'icon-left';
@@ -149,11 +198,17 @@
         return b;
       };
 
+      const btnFilters = mkBtn('ih-toggle-filters', 'Filtres', 'bi bi-funnel');
       const btnResults = mkBtn('ih-toggle-results', 'Masquer les résultats', 'bi bi-list-ul');
       const btnHelper = mkBtn('ih-toggle-helper', 'Masquer Better Infocuria', 'bi bi-layout-sidebar-inset');
       const btnScroll = mkBtn('ih-scroll-to-doc', 'Aller au document', 'bi bi-arrow-down');
       btnScroll.setAttribute('aria-label', 'Aller au document');
       btnScroll.title = 'Aller au document';
+
+      btnFilters.addEventListener('click', () => {
+        const b = findAnyFilterButton();
+        if (b) b.click();
+      });
 
       btnResults.addEventListener('click', () => {
         hideResults = !hideResults;
@@ -203,19 +258,32 @@
       wrap.appendChild(btnHelper);
       wrap.appendChild(btnScroll);
 
-      // Place next to the filter toggle when possible; otherwise pin to the top of main-content.
-      if (hostBtn && hostBtn.parentElement) {
-        hostBtn.parentElement.insertBefore(wrap, hostBtn.nextSibling);
-      } else if (container.firstChild) {
-        container.insertBefore(wrap, container.firstChild);
-      } else {
-        container.appendChild(wrap);
+      // In mobile layout, the site replaces the filters toggle with a Retour button.
+      // That button tends to mess up our 3-pane layout, so hide it when we can.
+      if (!hostBtn && returnBtn) {
+        try {
+          const host = returnBtn.closest?.('#close-information-button') || returnBtn.closest?.('app-harmonia-button');
+          if (host) host.style.setProperty('display', 'none', 'important');
+          else returnBtn.style.setProperty('display', 'none', 'important');
+        } catch {
+          // ignore
+        }
       }
+
+      // Place next to the filter toggle when possible; otherwise pin to the top of main-content.
+      anchorBtn.parentElement.insertBefore(wrap, anchorBtn.nextSibling);
+    }
+
+    // Responsive re-render can move/recreate the filters toggle button.
+    // Ensure our group stays next to it.
+    if (wrap.parentElement !== anchorBtn.parentElement) {
+      anchorBtn.parentElement.insertBefore(wrap, anchorBtn.nextSibling);
     }
 
     // Update labels from state.
     const btnResults = wrap.querySelector('#ih-toggle-results');
     const btnHelper = wrap.querySelector('#ih-toggle-helper');
+    const btnFilters = wrap.querySelector('#ih-toggle-filters');
     const btnScroll = wrap.querySelector('#ih-scroll-to-doc');
     const setBtnLabel = (btn, label, iconClass) => {
       if (!btn) return;
@@ -230,6 +298,7 @@
 
     setBtnLabel(btnResults, hideResults ? 'Afficher les résultats' : 'Masquer les résultats', 'bi bi-list-ul');
     setBtnLabel(btnHelper, hideHelper ? 'Afficher Better Infocuria' : 'Masquer Better Infocuria', 'bi bi-layout-sidebar-inset');
+    setBtnLabel(btnFilters, 'Filtres', 'bi bi-funnel');
     setBtnLabel(btnScroll, 'Aller au document', 'bi bi-arrow-down');
 
     // Hide the results toggle if we can't identify the results pane.
@@ -237,6 +306,9 @@
 
     // Hide helper toggle if panel doesn't exist yet.
     if (btnHelper) btnHelper.style.display = panelEl ? '' : 'none';
+
+    // Hide filters toggle when the site doesn't expose any filters toggle we can click.
+    if (btnFilters) btnFilters.style.display = findAnyFilterButton() ? '' : 'none';
   }
 
   function ensureDockedLayout(panelEl) {
@@ -265,6 +337,12 @@
 
     panelEl.style.display = hideHelper ? 'none' : '';
 
+    // Infocuria sometimes keeps the results pane in the DOM but hides it via responsive CSS.
+    // In that case we must treat it as absent, otherwise our min-width + splitter math
+    // reserves space for an invisible pane and the helper becomes “stuck” too wide.
+    const wantList = Boolean(listPane) && !hideResults && BI.isVisible(listPane);
+    const wantHelper = !hideHelper;
+
     if (panelEl.parentElement !== mainContent) {
       panelEl.classList.add('ih-docked');
       panelEl.classList.remove('ih-floating');
@@ -275,11 +353,33 @@
     panelEl.classList.remove('ih-floating');
     panelEl.classList.remove('ih-fixed-right');
 
+    // Mark presence so we can scope any emergency overlay fixes.
+    try {
+      document.documentElement.classList.add('ih-has-docked');
+    } catch {
+      // ignore
+    }
+
+    // If a previously closed filters drawer left a transparent backdrop, disable it.
+    neutralizeLingeringBackdrops();
+
+    // On narrow/mobile layouts, Infocuria can switch main-content to a stacked layout.
+    // Force a horizontal, non-wrapping flex row while our docked panes/splitters are present,
+    // otherwise dragging splitters has no visible effect.
+    try {
+      mainContent.style.setProperty('display', 'flex', 'important');
+      mainContent.style.setProperty('flex-direction', 'row', 'important');
+      mainContent.style.setProperty('flex-wrap', 'nowrap', 'important');
+      mainContent.style.setProperty('align-items', 'stretch', 'important');
+    } catch {
+      // ignore
+    }
+
     const splitter1 = ensureSplitter('ih-splitter-1');
     const splitter2 = ensureSplitter('ih-splitter-2');
 
     // Splitter 1 (between list/results and details)
-    if (!hideResults && listPane) {
+    if (wantList) {
       splitter1.style.display = '';
       if (splitter1.parentElement !== mainContent) {
         mainContent.insertBefore(splitter1, detailsPane);
@@ -291,7 +391,7 @@
     }
 
     // Splitter 2 (between details and helper)
-    if (!hideHelper) {
+    if (wantHelper) {
       splitter2.style.display = '';
       if (splitter2.parentElement !== mainContent) {
         mainContent.insertBefore(splitter2, panelEl);
@@ -303,14 +403,60 @@
     }
 
     const splitW = Math.round(splitter1.getBoundingClientRect().width || 12);
-    const minList = MIN_LIST;
-    const minDetails = MIN_DETAILS;
-    const minHelper = MIN_HELPER;
-    const splitterCount = (hideResults || !listPane ? 0 : 1) + (hideHelper ? 0 : 1);
+    let minList = MIN_LIST;
+    let minDetails = MIN_DETAILS;
+    let minHelper = MIN_HELPER;
+
+    // If a pane isn't actually present, it shouldn't claim any minimum width.
+    if (!wantList) minList = 0;
+    if (!wantHelper) minHelper = 0;
+
+    // If the viewport is too narrow, relax minimums so splitters can still move.
+    // (Avoid impossible constraints like minDetails + minHelper > total.)
+    const relaxMins2 = (totalW, a, b) => {
+      if (totalW <= 0) return [0, 0];
+      if (a + b <= totalW) return [a, b];
+      const scale = totalW / (a + b);
+      const aa = Math.max(0, Math.floor(a * scale));
+      const bb = Math.max(0, totalW - aa);
+      return [aa, bb];
+    };
+    const relaxMins3 = (totalW, a, b, c) => {
+      if (totalW <= 0) return [0, 0, 0];
+      if (a + b + c <= totalW) return [a, b, c];
+      // Prefer giving space to details; relax list first, then helper, then details.
+      let overflow = a + b + c - totalW;
+      let aa = a;
+      let bb = b;
+      let cc = c;
+      const reduceA = Math.min(overflow, aa);
+      aa -= reduceA;
+      overflow -= reduceA;
+      const reduceC = Math.min(overflow, cc);
+      cc -= reduceC;
+      overflow -= reduceC;
+      const reduceB = Math.min(overflow, bb);
+      bb -= reduceB;
+      return [Math.max(0, aa), Math.max(0, bb), Math.max(0, cc)];
+    };
+
+    const splitterCount = (wantList ? 1 : 0) + (wantHelper ? 1 : 0);
     const total = Math.max(0, mainContent.clientWidth - splitW * splitterCount);
     if (total <= 0) return true;
 
-    const layoutKey = `${(listPane || {}).tagName || 'NONE'}:${(listPane || {}).className || ''}|${detailsPane.tagName}:${detailsPane.className}|${Math.round(mainContent.clientWidth)}|${hideResults ? 'R0' : 'R1'}|${hideHelper ? 'H0' : 'H1'}`;
+    if (wantList && wantHelper) {
+      [minList, minDetails, minHelper] = relaxMins3(total, minList, minDetails, minHelper);
+    } else if (!wantList && wantHelper) {
+      [minDetails, minHelper] = relaxMins2(total, minDetails, minHelper);
+    } else if (wantList && !wantHelper) {
+      [minList, minDetails] = relaxMins2(total, minList, minDetails);
+      minHelper = 0;
+    } else {
+      minList = 0;
+      minHelper = 0;
+    }
+
+    const layoutKey = `${(listPane || {}).tagName || 'NONE'}:${(listPane || {}).className || ''}|${detailsPane.tagName}:${detailsPane.className}|${Math.round(mainContent.clientWidth)}|${wantList ? 'L1' : 'L0'}|${wantHelper ? 'H1' : 'H0'}`;
     const prevKey = panelEl.dataset.ihLayoutKey;
     const prevTotal = Number(panelEl.dataset.ihTotal || '0');
     const needsSizing = panelEl.dataset.ihSized !== '1' || prevKey !== layoutKey || Math.abs(prevTotal - total) > 2;
@@ -320,16 +466,16 @@
     let wHelper = lastWHelper;
 
     // If we don't have a remembered width (session), seed from current DOM widths.
-    if (!wList && listPane) wList = listPane.getBoundingClientRect().width;
+    if (!wList && wantList) wList = listPane.getBoundingClientRect().width;
     if (!wDetails) wDetails = detailsPane.getBoundingClientRect().width;
     if (!wHelper) wHelper = panelEl.getBoundingClientRect().width;
 
     if (needsSizing) {
       if (hideHelper) wHelper = null;
-      if (hideResults) wList = null;
+      if (hideResults || !wantList) wList = null;
 
-      const pinListMin = Boolean(forceMinListOnce && !hideResults && listPane);
-      const pinHelperMin = Boolean(forceMinHelperOnce && !hideHelper);
+      const pinListMin = Boolean(forceMinListOnce && wantList);
+      const pinHelperMin = Boolean(forceMinHelperOnce && wantHelper);
       const lockToMins = pinListMin || pinHelperMin;
 
       if (lockToMins) {
@@ -339,8 +485,8 @@
         let targetList = pinListMin ? MIN_LIST : (Number.isFinite(wList) ? wList : MIN_LIST);
         let targetHelper = pinHelperMin ? MIN_HELPER : (Number.isFinite(wHelper) ? wHelper : MIN_HELPER);
 
-        if (hideResults || !listPane) targetList = 0;
-        if (hideHelper) targetHelper = 0;
+        if (!wantList) targetList = 0;
+        if (!wantHelper) targetHelper = 0;
 
         // Give the maximum possible space to the judgment/details pane.
         let wListLocked = BI.clamp(targetList, 0, total);
@@ -348,8 +494,8 @@
         let wDetailsLocked = total - wListLocked - wHelperLocked;
 
         // If details would be too small, reduce list then helper to make room.
-        if (wDetailsLocked < MIN_DETAILS) {
-          let deficit = MIN_DETAILS - wDetailsLocked;
+        if (wDetailsLocked < minDetails) {
+          let deficit = minDetails - wDetailsLocked;
           const reduceList = Math.min(deficit, wListLocked);
           wListLocked -= reduceList;
           deficit -= reduceList;
@@ -363,20 +509,20 @@
           wDetailsLocked = total - wListLocked - wHelperLocked;
         }
 
-        if (!hideResults && listPane) wList = wListLocked;
+        if (wantList) wList = wListLocked;
         wDetails = BI.clamp(wDetailsLocked, 0, total);
-        if (!hideHelper) wHelper = wHelperLocked;
+        if (wantHelper) wHelper = wHelperLocked;
       } else {
         // Default splits depend on which panes are visible.
-        if ((!wList && !hideResults) || !wDetails || (!wHelper && !hideHelper)) {
-          if (!hideResults && !hideHelper) {
+        if ((!wList && wantList) || !wDetails || (!wHelper && wantHelper)) {
+          if (wantList && wantHelper) {
             wList = wList || Math.round(total * 0.38);
             wDetails = wDetails || Math.round(total * 0.42);
             wHelper = wHelper || total - wList - wDetails;
-          } else if (hideResults && !hideHelper) {
+          } else if (!wantList && wantHelper) {
             wDetails = wDetails || Math.round(total * 0.58);
             wHelper = wHelper || total - wDetails;
-          } else if (!hideResults && hideHelper) {
+          } else if (wantList && !wantHelper) {
             wList = wList || Math.round(total * 0.45);
             wDetails = wDetails || total - wList;
           } else {
@@ -396,38 +542,38 @@
 
       if (lockToMins) {
         // Already allocated exactly (skip proportional scaling).
-      } else if (!hideResults && !hideHelper) {
+      } else if (wantList && wantHelper) {
         [wList, wDetails, wHelper] = scaleToTotal([wList, wDetails, wHelper]);
-        wList = BI.clamp(wList, minList, total - minDetails - minHelper);
-        wDetails = BI.clamp(wDetails, minDetails, total - wList - minHelper);
+        wList = BI.clamp(wList, minList, Math.max(minList, total - minDetails - minHelper));
+        wDetails = BI.clamp(wDetails, minDetails, Math.max(minDetails, total - wList - minHelper));
         wHelper = total - wList - wDetails;
-        wHelper = BI.clamp(wHelper, minHelper, total - wList - wDetails);
-      } else if (hideResults && !hideHelper) {
+        wHelper = BI.clamp(wHelper, minHelper, Math.max(minHelper, total - wList - wDetails));
+      } else if (!wantList && wantHelper) {
         [wDetails, wHelper] = scaleToTotal([wDetails, wHelper]);
-        wDetails = BI.clamp(wDetails, minDetails, total - minHelper);
-        wHelper = BI.clamp(total - wDetails, minHelper, total - wDetails);
+        wDetails = BI.clamp(wDetails, minDetails, Math.max(minDetails, total - minHelper));
+        wHelper = BI.clamp(total - wDetails, minHelper, Math.max(minHelper, total - wDetails));
         wDetails = total - wHelper;
-      } else if (!hideResults && hideHelper) {
+      } else if (wantList && !wantHelper) {
         [wList, wDetails] = scaleToTotal([wList, wDetails]);
-        wList = BI.clamp(wList, minList, total - minDetails);
-        wDetails = BI.clamp(total - wList, minDetails, total - wList);
+        wList = BI.clamp(wList, minList, Math.max(minList, total - minDetails));
+        wDetails = BI.clamp(total - wList, minDetails, Math.max(minDetails, total - wList));
         wList = total - wDetails;
       } else {
         wDetails = total;
       }
 
-      if (!hideResults && listPane) setFlexBasis(listPane, wList);
+      if (wantList) setFlexBasis(listPane, wList);
       setFlexBasis(detailsPane, wDetails);
-      if (!hideHelper) setFlexBasis(panelEl, wHelper);
+      if (wantHelper) setFlexBasis(panelEl, wHelper);
 
       panelEl.dataset.ihSized = '1';
       panelEl.dataset.ihLayoutKey = layoutKey;
       panelEl.dataset.ihTotal = String(total);
 
       // Remember widths for this session.
-      lastWList = !hideResults && listPane ? wList : lastWList;
+      lastWList = wantList ? wList : lastWList;
       lastWDetails = wDetails;
-      lastWHelper = !hideHelper ? wHelper : lastWHelper;
+      lastWHelper = wantHelper ? wHelper : lastWHelper;
     }
 
     const bindSplitter = (splitter, leftEl, rightEl, leftRole, rightRole) => {
@@ -436,8 +582,13 @@
 
       splitter.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         document.documentElement.classList.add('ih-resizing');
-        splitter.setPointerCapture(e.pointerId);
+        try {
+          splitter.setPointerCapture(e.pointerId);
+        } catch {
+          // ignore
+        }
         splitter.classList.add('ih-active');
 
         const leftStart = leftEl.getBoundingClientRect().width;
@@ -489,8 +640,8 @@
 
     syncDockedTop(panelEl, detailsPane);
 
-    if (!hideResults && listPane) bindSplitter(splitter1, listPane, detailsPane, 'list', 'details');
-    if (!hideHelper) bindSplitter(splitter2, detailsPane, panelEl, 'details', 'helper');
+    if (wantList) bindSplitter(splitter1, listPane, detailsPane, 'list', 'details');
+    if (wantHelper) bindSplitter(splitter2, detailsPane, panelEl, 'details', 'helper');
 
     if (!window.__ihResizeBound) {
       window.__ihResizeBound = true;
@@ -567,6 +718,89 @@
       scroller.addEventListener('scroll', cb, { passive: true });
     }
   }
+
+  function neutralizeLingeringBackdrops() {
+    // In narrow mode, closing the filters drawer sometimes leaves behind a transparent
+    // backdrop/overlay element that still captures pointer events, which prevents dragging
+    // our splitters. Only apply when our docked layout is active.
+    if (!document.documentElement.classList.contains('ih-has-docked')) return;
+
+    const selectors = [
+      '.cdk-overlay-backdrop',
+      '.cdk-overlay-container',
+      '.cdk-overlay-pane',
+      '[class*="backdrop" i]',
+      '[class*="overlay-backdrop" i]',
+      '[class*="modal-backdrop" i]'
+    ].join(',');
+
+    const nodes = Array.from(document.querySelectorAll(selectors));
+    for (const el of nodes) {
+      if (!(el instanceof HTMLElement)) continue;
+      let cs;
+      try {
+        cs = getComputedStyle(el);
+      } catch {
+        continue;
+      }
+      if (!cs) continue;
+      if (cs.pointerEvents === 'none') continue;
+      if (cs.position !== 'fixed') continue;
+
+      const opacity = Number(cs.opacity || '1');
+      const invisible = cs.visibility === 'hidden' || cs.display === 'none' || (Number.isFinite(opacity) && opacity < 0.05);
+      if (!invisible) continue;
+
+      // Only touch full-screen-ish layers.
+      const r = el.getBoundingClientRect();
+      const coversScreen = r.width >= window.innerWidth - 2 && r.height >= window.innerHeight - 2;
+      if (!coversScreen) continue;
+
+      try {
+        el.style.setProperty('pointer-events', 'none', 'important');
+        // If it's already invisible, also remove it from layout/stacking.
+        el.style.setProperty('display', 'none', 'important');
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  function bindOverlayCloseCleanup() {
+    if (window.__ihOverlayCleanupBound) return;
+    window.__ihOverlayCleanupBound = true;
+
+    document.addEventListener(
+      'click',
+      (e) => {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+
+        // Heuristics for close buttons ("X", "Fermer", icon-only close).
+        const btn = t.closest('button,[role="button"]');
+        if (!btn) return;
+        const label = `${btn.getAttribute('aria-label') || ''} ${btn.title || ''} ${(btn.textContent || '').trim()}`.toLowerCase();
+        const looksLikeClose =
+          label.includes('fermer') ||
+          label === 'x' ||
+          label.includes('close') ||
+          btn.matches('button[aria-describedby*="close" i],button[aria-label*="close" i]');
+        if (!looksLikeClose) return;
+
+        // After any overlay close, do a deferred cleanup + relayout.
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            neutralizeLingeringBackdrops();
+            const p = document.getElementById('infocuria-helper');
+            if (p) ensureDockedLayout(p);
+          });
+        });
+      },
+      true
+    );
+  }
+
+  bindOverlayCloseCleanup();
 
   BI.getMainContentRoot = getMainContentRoot;
   BI.getLayoutPanes = getLayoutPanes;
