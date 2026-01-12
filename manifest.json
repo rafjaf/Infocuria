@@ -15,7 +15,16 @@
   "content_scripts": [
     {
       "matches": ["https://infocuria.curia.europa.eu/*"],
-      "js": ["content.js"],
+      "js": [
+        "bi/ns.js",
+        "bi/utils.js",
+        "bi/doc.js",
+        "bi/layout.js",
+        "bi/toc.js",
+        "bi/panel.js",
+        "bi/highlight.js",
+        "bi/start.js"
+      ],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
