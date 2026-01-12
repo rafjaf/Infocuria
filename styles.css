@@ -8,6 +8,10 @@
   border-radius: 10px;
 }
 
+#infocuria-helper.ih-hidden {
+  display: none !important;
+}
+
 /* Docked as a third column inside the results layout */
 #infocuria-helper.ih-docked {
   position: sticky;
@@ -103,6 +107,11 @@
 
 #infocuria-helper li {
   margin: 4px 0;
+}
+
+#infocuria-helper .ih-toc a {
+  display: block;
+  padding: 2px 0;
 }
 
 #infocuria-helper .ih-muted {

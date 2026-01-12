@@ -1,4 +1,4 @@
-# Infocuria Helper (Chrome extension)
+# Better Infocuria (Chrome extension)
 
 This is a simple Manifest V3 Chrome extension that adds a citation panel + copy helper + PDF download shortcut on **InfoCuria**.
 

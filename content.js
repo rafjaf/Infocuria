@@ -533,10 +533,130 @@ function buildQuoteText({ refText, selectedText, point }) {
   return `${refText}, point `;
 }
 
+function findScrollContainer(el) {
+  let cur = el;
+  while (cur && cur !== document.body) {
+    try {
+      const cs = getComputedStyle(cur);
+      const oy = cs.overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && cur.scrollHeight > cur.clientHeight + 2) return cur;
+    } catch {
+      // ignore
+    }
+    cur = cur.parentElement;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+
+function scrollToTocTarget(previewRoot, targetEl) {
+  if (!previewRoot || !targetEl) return;
+
+  // Prefer the actual preview scroll container when present.
+  const explicit = previewRoot.querySelector('#document-viewer-content') || previewRoot.querySelector('.preview-content');
+  const container = explicit || findScrollContainer(targetEl);
+
+  const region = previewRoot.closest('[role="region"]');
+  const tablist = region?.querySelector('[role="tablist"]');
+  const offset = tablist ? Math.round(tablist.getBoundingClientRect().height) + 8 : 0;
+
+  const doScroll = () => {
+    try {
+      if (container === document.scrollingElement || container === document.documentElement || container === document.body) {
+        const y = window.scrollY + targetEl.getBoundingClientRect().top - offset;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+        return;
+      }
+
+      const targetRect = targetEl.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const delta = targetRect.top - containerRect.top;
+      const next = container.scrollTop + delta - offset;
+      container.scrollTop = Math.max(0, next);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Scroll twice: immediate + after a short delay to resist SPA/layout reflows.
+  doScroll();
+  window.setTimeout(doScroll, 120);
+}
+
 function getRefTextPlainFromPanel(panel) {
   // Convert the HTML ref to plain text, preserving the RG string.
   const refEl = panel.querySelector('.ih-ref');
   return normalizeSpaces(refEl?.innerText || '');
+}
+
+function setPanelHidden(hidden) {
+  const panel = document.getElementById('infocuria-helper');
+  if (!panel) return;
+  if (hidden) panel.classList.add('ih-hidden');
+  else panel.classList.remove('ih-hidden');
+}
+
+function getTocIndentLevelFromElement(el) {
+  if (!el) return null;
+  // Infocuria uses classes like "C04Titre1" and "C05Titre2" to indicate hierarchy.
+  for (const cls of Array.from(el.classList || [])) {
+    const m = String(cls).match(/Titre(\d+)/i);
+    if (m?.[1]) {
+      const lvl = parseInt(m[1], 10);
+      if (Number.isFinite(lvl) && lvl >= 1) return Math.max(0, Math.min(4, lvl - 1));
+    }
+  }
+  return null;
+}
+
+function assignTocIndentLevels(root, items) {
+  if (!root || !items?.length) return;
+
+  // First pass: use semantic style classes (preferred).
+  let anyAssigned = false;
+  for (const it of items) {
+    const lvl = getTocIndentLevelFromElement(it.el);
+    if (lvl != null) {
+      it.indentLevel = lvl;
+      anyAssigned = true;
+    }
+  }
+
+  // If everything got a level, we're done.
+  if (anyAssigned && items.every((it) => it.indentLevel != null)) return;
+
+  const rootRect = root.getBoundingClientRect();
+  if (!Number.isFinite(rootRect.left)) return;
+
+  const tol = 8; // px clustering tolerance
+  const raw = items.map((it) => {
+    const r = it.el.getBoundingClientRect();
+    const left = Number.isFinite(r.left) ? r.left : rootRect.left;
+    return Math.max(0, Math.round(left - rootRect.left));
+  });
+
+  const min = Math.min(...raw);
+  const rel = raw.map((v) => Math.max(0, v - min));
+
+  const sorted = rel.slice().sort((a, b) => a - b);
+  const clusters = [];
+  for (const v of sorted) {
+    const last = clusters[clusters.length - 1];
+    if (last == null || Math.abs(v - last) > tol) clusters.push(v);
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].indentLevel != null) continue;
+    const v = rel[i];
+    let idx = 0;
+    for (let c = 0; c < clusters.length; c++) {
+      if (Math.abs(v - clusters[c]) <= tol) {
+        idx = c;
+        break;
+      }
+      if (v > clusters[c]) idx = c;
+    }
+    items[i].indentLevel = Math.max(0, Math.min(4, idx));
+  }
 }
 
 function buildTocItems(root) {
@@ -548,6 +668,7 @@ function buildTocItems(root) {
     /^Sur les questions préjudicielles/i,
     /^Sur la/i,
     /^Sur le/i,
+    /^Sur\s+l[’']/i,
     /^Par ces motifs/i,
     /^Arrêt$/i,
     /^Ordonnance$/i,
@@ -570,12 +691,15 @@ function buildTocItems(root) {
 
   // Dedupe by title
   const seen = new Set();
-  return items.filter((it) => {
+  const deduped = items.filter((it) => {
     const key = it.title.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   }).slice(0, 40);
+
+  assignTocIndentLevels(root, deduped);
+  return deduped;
 }
 
 function ensureAnchorsForToc(items) {
@@ -651,6 +775,8 @@ function createOrUpdatePanel(docData, tocItems) {
     document.body.appendChild(panel);
   }
 
+  setPanelHidden(false);
+
   panel.querySelector('.ih-ref').innerHTML = docData.refHtml;
   panel.dataset.ihRg = docData.rg || '';
   panel.dataset.ihName = docData.name || '';
@@ -658,7 +784,11 @@ function createOrUpdatePanel(docData, tocItems) {
   const tocEl = panel.querySelector('.ih-toc');
   if (tocItems.length) {
     tocEl.innerHTML = `<div class="ih-toc-title">Table of contents</div><ul>${tocItems
-      .map((it) => `<li><a href="${it.href}">${escapeHtml(it.title)}</a></li>`)
+      .map((it) => {
+        const indent = Math.max(0, Math.min(4, Number(it.indentLevel || 0))) * 14;
+        const id = String(it.el?.id || '').trim();
+        return `<li style="margin-left:${indent}px"><a href="${it.href}" data-ih-target="${escapeHtml(id)}">${escapeHtml(it.title)}</a></li>`;
+      })
       .join('')}</ul>`;
   } else {
     tocEl.innerHTML = '';
@@ -720,17 +850,27 @@ function attachPanelHandlers(panel, root) {
       const href = a.getAttribute('href') || '';
       if (!href.startsWith('#')) return;
 
-      const id = href.slice(1);
+      const id = (a.getAttribute('data-ih-target') || href.slice(1) || '').trim();
       if (!id) return;
-
-      const target = root.querySelector(`#${CSS.escape(id)}`) || document.getElementById(id);
-      if (!target) return;
 
       // Prevent SPA/hash navigation; just scroll within the existing preview.
       e.preventDefault();
-      e.stopPropagation();
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+      e.stopImmediatePropagation();
+
+      // SPA can replace the preview root; always resolve the current one.
+      const currentRoot = getDocumentPreviewRoot() || root;
+      let target = currentRoot?.querySelector?.(`#${CSS.escape(id)}`) || document.getElementById(id);
+      if (!target) {
+        // Fallback: find by visible title text when ids got stale.
+        const wanted = normalizeSpaces(a.textContent);
+        if (wanted && currentRoot) {
+          target = Array.from(currentRoot.querySelectorAll('p')).find((p) => normalizeSpaces(p.textContent) === wanted) || null;
+        }
+      }
+      if (!currentRoot || !target) return;
+
+      scrollToTocTarget(currentRoot, target);
+    }, true);
   }
 
   // Optional: override Ctrl+C within the document preview only.
@@ -778,6 +918,7 @@ function initOnRoot(root) {
   const docData = buildDocData(root);
   if (!docData.rg || !docData.date) {
     // Not a judgment preview we can parse.
+    setPanelHidden(true);
     return;
   }
 
@@ -794,6 +935,7 @@ function start() {
   // Works when the panel is already open.
   const root = getDocumentPreviewRoot();
   if (root) initOnRoot(root);
+  else setPanelHidden(true);
 
   // Watch for SPA updates / opening the preview panel.
   // Important: Infocuria is very dynamic and we also mutate the DOM (highlighting, panel).
@@ -808,12 +950,12 @@ function start() {
       scheduled = false;
       suppressObserver = true;
       try {
-        // Always try to dock any existing panel when the SPA changes.
-        const existingPanel = document.getElementById('infocuria-helper');
-        if (existingPanel) ensureDockedLayout(existingPanel);
-
         const r = getDocumentPreviewRoot();
-        if (r) initOnRoot(r);
+        if (!r) {
+          setPanelHidden(true);
+          return;
+        }
+        initOnRoot(r);
       } finally {
         suppressObserver = false;
       }
