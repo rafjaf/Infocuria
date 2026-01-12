@@ -8,6 +8,45 @@
   border-radius: 10px;
 }
 
+/* Layout toggle buttons near Infocuria controls */
+.ih-layout-toggles {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: 8px;
+}
+
+/* Hide Infocuria's document panel close button (can break layout with our pane toggles) */
+button[aria-describedby="sheet-header-tooltip-close"],
+button[aria-label="Fermer"][aria-describedby="sheet-header-tooltip-close"] {
+  display: none !important;
+}
+
+/* Fallback: hide the icon-only close button in the document/judgment header area */
+.information-panel-header button.curia-button.curia-button-icon-only,
+.information-panel-header app-harmonia-button button.curia-button-icon-only {
+  display: none !important;
+}
+
+/* Fallback mode when we can't dock: keep helper pinned to the right edge */
+#infocuria-helper.ih-fixed-right {
+  position: fixed;
+  top: 80px;
+  right: 0;
+  width: 420px;
+  height: calc(100vh - 100px);
+  max-height: none;
+  overflow: hidden;
+  z-index: 2147483647;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+#infocuria-helper.ih-fixed-right .ih-body {
+  overflow: auto;
+  height: 100%;
+}
+
 #infocuria-helper.ih-hidden {
   display: none !important;
 }
