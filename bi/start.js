@@ -41,13 +41,28 @@
     const el = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
     if (!el) return null;
 
-    const p = el.closest('p');
-    if (!p) return null;
-    if (previewRoot && !previewRoot.contains(p)) return null;
+    // Legacy behavior from content.js: try to extract a leading paragraph number ("point")
+    // from the selection container; if not found, fall back to closest <p>.
+    const extractFromText = (text) => {
+      const m = String(text || '').match(/^\s*(\d+)\b/);
+      return m?.[1] ? Number(m[1]) : null;
+    };
 
-    const m = (p.textContent || '').match(/^\s*(\d+)\s*\./);
-    if (!m) return null;
-    return { number: Number(m[1]), element: p };
+    let targetEl = el;
+    if (previewRoot && !previewRoot.contains(targetEl)) return null;
+
+    let num = extractFromText(targetEl.innerText || targetEl.textContent);
+    if (num == null) {
+      const p = targetEl.closest('p');
+      if (!p) return null;
+      if (previewRoot && !previewRoot.contains(p)) return null;
+      num = extractFromText(p.innerText || p.textContent);
+      if (num == null) return null;
+      return { number: num, element: p };
+    }
+
+    const p = targetEl.closest('p');
+    return { number: num, element: p || targetEl };
   }
 
   function ensureToast() {

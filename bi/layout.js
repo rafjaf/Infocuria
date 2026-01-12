@@ -226,8 +226,12 @@
     const details = detailsPane || getLayoutPanes()?.detailsPane;
     if (!details) return;
 
+    // Revert to the simpler behavior: align helper top to the judgment header/tab bar.
     const tablist = details.querySelector('[role="tablist"]');
-    const topPx = Math.max(0, Math.round((tablist || details).getBoundingClientRect().top));
+    const header = tablist?.closest?.('.information-panel-header');
+    const refEl = header || tablist || details;
+    const refTop = Math.round(refEl.getBoundingClientRect().top);
+    const topPx = Math.max(0, refTop);
     panelEl.style.setProperty('--ih-docked-top', BI.px(topPx));
   }
 
