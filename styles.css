@@ -82,8 +82,11 @@
   padding: 10px 12px;
 }
 
-#infocuria-helper .ih-ref {
+#infocuria-helper .ih-ref,
+#infocuria-helper .ih-citation {
   line-height: 1.35;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 #infocuria-helper .ih-ref a {
