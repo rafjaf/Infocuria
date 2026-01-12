@@ -637,7 +637,7 @@ function createOrUpdatePanel(docData, tocItems) {
     panel.className = 'ih-floating';
     panel.innerHTML = `
       <div class="ih-header">
-        <div class="ih-title">Infocuria Helper</div>
+        <div class="ih-title">Better Infocuria</div>
         <button type="button" class="ih-copy">Copy</button>
         <button type="button" class="ih-pdf">Download</button>
       </div>
@@ -700,6 +700,7 @@ function attachPanelHandlers(panel, root) {
 
   const copyBtn = panel.querySelector('.ih-copy');
   const pdfBtn = panel.querySelector('.ih-pdf');
+  const tocEl = panel.querySelector('.ih-toc');
 
   if (copyBtn && !copyBtn.dataset.ihBound) {
     copyBtn.dataset.ihBound = '1';
@@ -709,6 +710,27 @@ function attachPanelHandlers(panel, root) {
   if (pdfBtn && !pdfBtn.dataset.ihBound) {
     pdfBtn.dataset.ihBound = '1';
     pdfBtn.addEventListener('click', onPdf);
+  }
+
+  if (tocEl && tocEl.dataset.ihBound !== '1') {
+    tocEl.dataset.ihBound = '1';
+    tocEl.addEventListener('click', (e) => {
+      const a = e.target?.closest?.('a');
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      if (!href.startsWith('#')) return;
+
+      const id = href.slice(1);
+      if (!id) return;
+
+      const target = root.querySelector(`#${CSS.escape(id)}`) || document.getElementById(id);
+      if (!target) return;
+
+      // Prevent SPA/hash navigation; just scroll within the existing preview.
+      e.preventDefault();
+      e.stopPropagation();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   // Optional: override Ctrl+C within the document preview only.

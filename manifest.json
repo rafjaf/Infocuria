@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Infocuria Helper (citation & PDF)",
+  "name": "Better Infocuria",
   "version": "0.1.0",
   "description": "Adds a citation panel, copy helper, and PDF download shortcut on Infocuria judgment pages.",
   "permissions": ["downloads", "clipboardWrite"],
@@ -21,6 +21,6 @@
     }
   ],
   "action": {
-    "default_title": "Infocuria Helper"
+    "default_title": "Better Infocuria"
   }
 }
