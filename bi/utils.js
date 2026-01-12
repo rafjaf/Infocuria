@@ -85,19 +85,6 @@
     return `${Math.round(n)}px`;
   }
 
-  function readNumber(key) {
-    const v = Number(localStorage.getItem(key));
-    return Number.isFinite(v) && v > 0 ? v : null;
-  }
-
-  function writeNumber(key, value) {
-    try {
-      localStorage.setItem(key, String(Math.round(value)));
-    } catch {
-      // ignore
-    }
-  }
-
   function isVisible(el) {
     if (!el) return false;
     const cs = getComputedStyle(el);
@@ -116,7 +103,5 @@
   BI.escapeRegExp = escapeRegExp;
   BI.clamp = clamp;
   BI.px = px;
-  BI.readNumber = readNumber;
-  BI.writeNumber = writeNumber;
   BI.isVisible = isVisible;
 })();

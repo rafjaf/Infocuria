@@ -1,24 +1,18 @@
 (() => {
   const BI = globalThis.BetterInfocuria;
 
-  const LS_HIDE_RESULTS = 'ih:hide:results';
-  const LS_HIDE_HELPER = 'ih:hide:helper';
+  // Session-only layout state (no persistence).
+  let hideResults = false;
+  let hideHelper = false;
+  let lastWList = null;
+  let lastWDetails = null;
+  let lastWHelper = null;
+  let forceMinListOnce = false;
+  let forceMinHelperOnce = false;
 
-  function readFlag(key) {
-    try {
-      return localStorage.getItem(key) === '1';
-    } catch {
-      return false;
-    }
-  }
-
-  function writeFlag(key, value) {
-    try {
-      localStorage.setItem(key, value ? '1' : '0');
-    } catch {
-      // ignore
-    }
-  }
+  const MIN_LIST = 320;
+  const MIN_DETAILS = 420;
+  const MIN_HELPER = 320;
 
   function getMainContentRoot() {
     return document.getElementById('main-content');
@@ -63,7 +57,6 @@
 
     const detailsPane = pickDetailsPane(visibleChildren) || pickDetailsPane(children);
     if (!detailsPane) return null;
-
     const listCandidates = children.filter((el) => el !== detailsPane);
     const listPane = pickListPane(listCandidates);
 
@@ -100,7 +93,6 @@
     // Known variants seen on the site.
     const byClass = document.querySelector('button.filter-tooltip-hide,button.filter-tooltip-show');
     if (byClass) return byClass;
-
     const btns = Array.from(document.querySelectorAll('button'));
     return btns.find((b) => /masquer\s+les\s+filtres|afficher\s+les\s+filtres/i.test((b.textContent || '').trim())) || null;
   }
@@ -159,21 +151,57 @@
 
       const btnResults = mkBtn('ih-toggle-results', 'Masquer les résultats', 'bi bi-list-ul');
       const btnHelper = mkBtn('ih-toggle-helper', 'Masquer Better Infocuria', 'bi bi-layout-sidebar-inset');
+      const btnScroll = mkBtn('ih-scroll-to-doc', 'Aller au document', 'bi bi-arrow-down');
+      btnScroll.setAttribute('aria-label', 'Aller au document');
+      btnScroll.title = 'Aller au document';
 
       btnResults.addEventListener('click', () => {
-        writeFlag(LS_HIDE_RESULTS, !readFlag(LS_HIDE_RESULTS));
+        hideResults = !hideResults;
         const p = document.getElementById('infocuria-helper');
         if (p) ensureDockedLayout(p);
       });
 
       btnHelper.addEventListener('click', () => {
-        writeFlag(LS_HIDE_HELPER, !readFlag(LS_HIDE_HELPER));
+        hideHelper = !hideHelper;
         const p = document.getElementById('infocuria-helper');
         if (p) ensureDockedLayout(p);
       });
 
+      btnScroll.addEventListener('click', () => {
+        // Extra behavior:
+        // - hide filters (if currently visible)
+        // - shrink results pane to minimum width
+        // - scroll the information panel into view
+
+        try {
+          const t = (hostBtn?.textContent || '').trim();
+          const isHideFilters = hostBtn?.classList?.contains('filter-tooltip-hide') || /masquer\s+les\s+filtres/i.test(t);
+          if (hostBtn && isHideFilters) hostBtn.click();
+        } catch {
+          // ignore
+        }
+
+        // Let the SPA react to the filter toggle before resizing/scrolling.
+        // We run 2 layout passes because Infocuria can resize panes after the filter click.
+        forceMinListOnce = true;
+        forceMinHelperOnce = true;
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            const p = document.getElementById('infocuria-helper');
+            if (p) ensureDockedLayout(p);
+            window.requestAnimationFrame(() => {
+              forceMinListOnce = true;
+              forceMinHelperOnce = true;
+              if (p) ensureDockedLayout(p);
+              document.querySelector('app-information-panel')?.scrollIntoView();
+            });
+          });
+        });
+      });
+
       wrap.appendChild(btnResults);
       wrap.appendChild(btnHelper);
+      wrap.appendChild(btnScroll);
 
       // Place next to the filter toggle when possible; otherwise pin to the top of main-content.
       if (hostBtn && hostBtn.parentElement) {
@@ -186,10 +214,9 @@
     }
 
     // Update labels from state.
-    const hideResults = readFlag(LS_HIDE_RESULTS);
-    const hideHelper = readFlag(LS_HIDE_HELPER);
     const btnResults = wrap.querySelector('#ih-toggle-results');
     const btnHelper = wrap.querySelector('#ih-toggle-helper');
+    const btnScroll = wrap.querySelector('#ih-scroll-to-doc');
     const setBtnLabel = (btn, label, iconClass) => {
       if (!btn) return;
       // Keep the icon-left structure.
@@ -203,6 +230,7 @@
 
     setBtnLabel(btnResults, hideResults ? 'Afficher les résultats' : 'Masquer les résultats', 'bi bi-list-ul');
     setBtnLabel(btnHelper, hideHelper ? 'Afficher Better Infocuria' : 'Masquer Better Infocuria', 'bi bi-layout-sidebar-inset');
+    setBtnLabel(btnScroll, 'Aller au document', 'bi bi-arrow-down');
 
     // Hide the results toggle if we can't identify the results pane.
     if (btnResults) btnResults.style.display = panes?.listPane ? '' : 'none';
@@ -213,8 +241,6 @@
 
   function ensureDockedLayout(panelEl) {
     const panes = getLayoutPanes();
-    const hideResults = readFlag(LS_HIDE_RESULTS);
-    const hideHelper = readFlag(LS_HIDE_HELPER);
 
     if (!panes) {
       // When we can't dock into the 3-column layout (e.g., narrow viewport), keep the helper
@@ -277,9 +303,9 @@
     }
 
     const splitW = Math.round(splitter1.getBoundingClientRect().width || 12);
-    const minList = 320;
-    const minDetails = 420;
-    const minHelper = 320;
+    const minList = MIN_LIST;
+    const minDetails = MIN_DETAILS;
+    const minHelper = MIN_HELPER;
     const splitterCount = (hideResults || !listPane ? 0 : 1) + (hideHelper ? 0 : 1);
     const total = Math.max(0, mainContent.clientWidth - splitW * splitterCount);
     if (total <= 0) return true;
@@ -289,29 +315,74 @@
     const prevTotal = Number(panelEl.dataset.ihTotal || '0');
     const needsSizing = panelEl.dataset.ihSized !== '1' || prevKey !== layoutKey || Math.abs(prevTotal - total) > 2;
 
-    let wList = BI.readNumber('ih:w:list');
-    let wDetails = BI.readNumber('ih:w:details');
-    let wHelper = BI.readNumber('ih:w:helper');
+    let wList = lastWList;
+    let wDetails = lastWDetails;
+    let wHelper = lastWHelper;
+
+    // If we don't have a remembered width (session), seed from current DOM widths.
+    if (!wList && listPane) wList = listPane.getBoundingClientRect().width;
+    if (!wDetails) wDetails = detailsPane.getBoundingClientRect().width;
+    if (!wHelper) wHelper = panelEl.getBoundingClientRect().width;
 
     if (needsSizing) {
       if (hideHelper) wHelper = null;
       if (hideResults) wList = null;
 
-      // Default splits depend on which panes are visible.
-      if ((!wList && !hideResults) || !wDetails || (!wHelper && !hideHelper)) {
-        if (!hideResults && !hideHelper) {
-          wList = wList || Math.round(total * 0.38);
-          wDetails = wDetails || Math.round(total * 0.42);
-          wHelper = wHelper || total - wList - wDetails;
-        } else if (hideResults && !hideHelper) {
-          wDetails = wDetails || Math.round(total * 0.58);
-          wHelper = wHelper || total - wDetails;
-        } else if (!hideResults && hideHelper) {
-          wList = wList || Math.round(total * 0.45);
-          wDetails = wDetails || total - wList;
-        } else {
-          // Only details visible.
-          wDetails = total;
+      const pinListMin = Boolean(forceMinListOnce && !hideResults && listPane);
+      const pinHelperMin = Boolean(forceMinHelperOnce && !hideHelper);
+      const lockToMins = pinListMin || pinHelperMin;
+
+      if (lockToMins) {
+        forceMinListOnce = false;
+        forceMinHelperOnce = false;
+
+        let targetList = pinListMin ? MIN_LIST : (Number.isFinite(wList) ? wList : MIN_LIST);
+        let targetHelper = pinHelperMin ? MIN_HELPER : (Number.isFinite(wHelper) ? wHelper : MIN_HELPER);
+
+        if (hideResults || !listPane) targetList = 0;
+        if (hideHelper) targetHelper = 0;
+
+        // Give the maximum possible space to the judgment/details pane.
+        let wListLocked = BI.clamp(targetList, 0, total);
+        let wHelperLocked = BI.clamp(targetHelper, 0, total);
+        let wDetailsLocked = total - wListLocked - wHelperLocked;
+
+        // If details would be too small, reduce list then helper to make room.
+        if (wDetailsLocked < MIN_DETAILS) {
+          let deficit = MIN_DETAILS - wDetailsLocked;
+          const reduceList = Math.min(deficit, wListLocked);
+          wListLocked -= reduceList;
+          deficit -= reduceList;
+
+          if (deficit > 0) {
+            const reduceHelper = Math.min(deficit, wHelperLocked);
+            wHelperLocked -= reduceHelper;
+            deficit -= reduceHelper;
+          }
+
+          wDetailsLocked = total - wListLocked - wHelperLocked;
+        }
+
+        if (!hideResults && listPane) wList = wListLocked;
+        wDetails = BI.clamp(wDetailsLocked, 0, total);
+        if (!hideHelper) wHelper = wHelperLocked;
+      } else {
+        // Default splits depend on which panes are visible.
+        if ((!wList && !hideResults) || !wDetails || (!wHelper && !hideHelper)) {
+          if (!hideResults && !hideHelper) {
+            wList = wList || Math.round(total * 0.38);
+            wDetails = wDetails || Math.round(total * 0.42);
+            wHelper = wHelper || total - wList - wDetails;
+          } else if (hideResults && !hideHelper) {
+            wDetails = wDetails || Math.round(total * 0.58);
+            wHelper = wHelper || total - wDetails;
+          } else if (!hideResults && hideHelper) {
+            wList = wList || Math.round(total * 0.45);
+            wDetails = wDetails || total - wList;
+          } else {
+            // Only details visible.
+            wDetails = total;
+          }
         }
       }
 
@@ -323,7 +394,9 @@
         return vals.map((v) => (Number.isFinite(v) ? v * f : v));
       };
 
-      if (!hideResults && !hideHelper) {
+      if (lockToMins) {
+        // Already allocated exactly (skip proportional scaling).
+      } else if (!hideResults && !hideHelper) {
         [wList, wDetails, wHelper] = scaleToTotal([wList, wDetails, wHelper]);
         wList = BI.clamp(wList, minList, total - minDetails - minHelper);
         wDetails = BI.clamp(wDetails, minDetails, total - wList - minHelper);
@@ -350,9 +423,14 @@
       panelEl.dataset.ihSized = '1';
       panelEl.dataset.ihLayoutKey = layoutKey;
       panelEl.dataset.ihTotal = String(total);
+
+      // Remember widths for this session.
+      lastWList = !hideResults && listPane ? wList : lastWList;
+      lastWDetails = wDetails;
+      lastWHelper = !hideHelper ? wHelper : lastWHelper;
     }
 
-    const bindSplitter = (splitter, leftEl, rightEl, leftKey, rightKey) => {
+    const bindSplitter = (splitter, leftEl, rightEl, leftRole, rightRole) => {
       if (splitter.dataset.ihBound === '1') return;
       splitter.dataset.ihBound = '1';
 
@@ -384,8 +462,15 @@
           document.removeEventListener('pointermove', onMove);
           document.removeEventListener('pointerup', onUp);
 
-          BI.writeNumber(leftKey, leftEl.getBoundingClientRect().width);
-          BI.writeNumber(rightKey, rightEl.getBoundingClientRect().width);
+          // Remember widths for this session only.
+          const leftW = leftEl.getBoundingClientRect().width;
+          const rightW = rightEl.getBoundingClientRect().width;
+          if (leftRole === 'list') lastWList = leftW;
+          if (leftRole === 'details') lastWDetails = leftW;
+          if (leftRole === 'helper') lastWHelper = leftW;
+          if (rightRole === 'list') lastWList = rightW;
+          if (rightRole === 'details') lastWDetails = rightW;
+          if (rightRole === 'helper') lastWHelper = rightW;
         };
 
         document.addEventListener('pointermove', onMove);
@@ -404,8 +489,8 @@
 
     syncDockedTop(panelEl, detailsPane);
 
-    if (!hideResults && listPane) bindSplitter(splitter1, listPane, detailsPane, 'ih:w:list', 'ih:w:details');
-    if (!hideHelper) bindSplitter(splitter2, detailsPane, panelEl, 'ih:w:details', 'ih:w:helper');
+    if (!hideResults && listPane) bindSplitter(splitter1, listPane, detailsPane, 'list', 'details');
+    if (!hideHelper) bindSplitter(splitter2, detailsPane, panelEl, 'details', 'helper');
 
     if (!window.__ihResizeBound) {
       window.__ihResizeBound = true;
