@@ -220,3 +220,16 @@ button[aria-label="Fermer"][aria-describedby="sheet-header-tooltip-close"] {
 #panel-document-preview p .ih-hl-blue {
   background: #9fe6ff;
 }
+
+/* Improve legibility of the judgment panel text */
+#panel-document-preview {
+  line-height: 1.5;
+}
+
+#panel-document-preview p {
+  margin: 0;
+}
+
+#panel-document-preview p + p {
+  margin-top: 1em;
+}

@@ -3,11 +3,31 @@
 
   function getScrollContainerForPreview(previewRoot) {
     if (!previewRoot) return null;
-    const viewer = previewRoot.querySelector('#document-viewer-content.preview-content');
-    if (viewer) return viewer;
+    const isScrollable = (el) => {
+      if (!el) return false;
+      let cs;
+      try {
+        cs = getComputedStyle(el);
+      } catch {
+        return false;
+      }
+      const overflowY = (cs?.overflowY || '').toLowerCase();
+      const canScroll = overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay';
+      return canScroll && el.scrollHeight > el.clientHeight + 2;
+    };
 
-    const scroller = previewRoot.querySelector('[data-testid="document-viewer-content"], .preview-content');
-    if (scroller) return scroller;
+    if (isScrollable(previewRoot)) return previewRoot;
+
+    const candidates = [
+      previewRoot.querySelector('#document-viewer-content.preview-content'),
+      previewRoot.querySelector('#document-viewer-content'),
+      previewRoot.querySelector('[data-testid="document-viewer-content"]'),
+      previewRoot.querySelector('.preview-content'),
+    ].filter(Boolean);
+
+    for (const el of candidates) {
+      if (isScrollable(el)) return el;
+    }
 
     return previewRoot;
   }
@@ -100,7 +120,19 @@
     const container = getScrollContainerForPreview(previewRoot);
     if (!container) return false;
 
-    const offset = 14;
+    // Compute offset to avoid hiding target under the preview header.
+    // Prefer an explicit preview header if present; fall back to a conservative small gap.
+    let headerHeight = 0;
+    try {
+      const header = previewRoot.querySelector('.preview-header') || previewRoot.querySelector('.information-panel-header') || previewRoot.querySelector('[role="tablist"]');
+      if (header) {
+        headerHeight = Math.round(header.getBoundingClientRect().height || 0);
+      }
+    } catch {
+      headerHeight = 0;
+    }
+
+    const offset = Math.max(14, headerHeight + 8);
     const top = computeScrollTopToElement(container, headingP, offset);
     if (top == null) return false;
 
