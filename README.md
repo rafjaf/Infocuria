@@ -1,28 +1,40 @@
-# Better Infocuria (Chrome extension)
+# Better Infocuria
 
-This is a simple Manifest V3 Chrome extension that adds a citation panel + copy helper + PDF download shortcut on **InfoCuria**.
+Better Infocuria is a Chrome extension that improves how you read and cite Court of Justice of the European Union judgments on Infocuria.
 
-## Install (unpacked)
+GitHub: https://github.com/rafjaf/Infocuria
+Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
 
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. Click **Load unpacked**
-4. Select this folder (repo root)
+## What it does
 
-## Use
+- Adds a citation panel with ready-to-copy references, including paragraph links and ECLI markup.
+- Builds a document table of contents for fast navigation within a judgment.
+- Highlights structure markers and converts ECLI references into clickable links.
+- Provides cleaner PDF downloads with friendly filenames.
+- Shows a quick info popup when you click the extension icon.
+- Displays a brief update banner after new versions are installed.
 
-- Go to an Infocuria case (example):
-  - https://infocuria.curia.europa.eu/tabs/affair?lang=FR&searchTerm=%22C-417%2F23%22&sort=INTRODUCTION_DATE-DESC
-- Click the **Arrêt** document in the results to open the document preview panel.
-- A floating panel will appear on the right.
+## Where it runs
 
-Features:
+- https://infocuria.curia.europa.eu/*
 
-- **Copy** button: copies a formatted reference; if text is selected, includes the paragraph number when it can be detected.
-- **PDF** button: downloads (via EUR-Lex) the PDF when a CELEX PDF link is available.
-- Basic inline highlighting and ECLI linkification within the document preview.
+## Permissions
 
-## Notes
+- downloads: save PDF files with a readable filename.
+- clipboardWrite: copy rich citations to the clipboard.
+- storage: remember whether the update banner has been shown.
 
-- The extension avoids hard-coding internal Infocuria APIs; it only reads the DOM.
-- If Infocuria changes its markup, the selectors in `content.js` may need updates.
+## Install
+
+1. Open the Chrome Web Store listing: <ADD_CHROME_WEB_STORE_URL_HERE>
+2. Click “Add to Chrome”.
+
+## Development
+
+1. Clone this repo.
+2. In Chrome, open chrome://extensions and enable Developer mode.
+3. Click “Load unpacked” and select this folder.
+
+## Feedback
+
+Issues and pull requests are welcome at https://github.com/rafjaf/Infocuria.

@@ -3,33 +3,34 @@
   "name": "Better Infocuria",
   "version": "0.1.0",
   "description": "Adds a citation panel, copy helper, and PDF download shortcut on Infocuria judgment pages.",
-  "permissions": ["downloads", "clipboardWrite"],
+  "permissions": ["downloads", "clipboardWrite", "storage"],
   "host_permissions": [
     "https://infocuria.curia.europa.eu/*",
     "https://eur-lex.europa.eu/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "src/background.js",
     "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["https://infocuria.curia.europa.eu/*"],
       "js": [
-        "bi/ns.js",
-        "bi/utils.js",
-        "bi/doc.js",
-        "bi/layout.js",
-        "bi/toc.js",
-        "bi/panel.js",
-        "bi/highlight.js",
-        "bi/start.js"
+        "src/ns.js",
+        "src/utils.js",
+        "src/doc.js",
+        "src/layout.js",
+        "src/toc.js",
+        "src/panel.js",
+        "src/highlight.js",
+        "index.js"
       ],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
   ],
   "action": {
-    "default_title": "Better Infocuria"
+    "default_title": "Better Infocuria",
+    "default_popup": "popup.html"
   }
 }

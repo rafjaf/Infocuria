@@ -53,3 +53,34 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // Keep the message channel open for async response.
   return true;
 });
+
+chrome.runtime.onInstalled.addListener((details) => {
+  if (!details || !details.reason) return;
+
+  const version = chrome.runtime.getManifest().version;
+
+  if (details.reason === 'install') {
+    chrome.storage.local.set({ ihLastInstalledVersion: version });
+    return;
+  }
+
+  if (details.reason !== 'update') return;
+  if (details.previousVersion && details.previousVersion === version) return;
+
+  chrome.storage.local.get('ihLastInstalledVersion', (res) => {
+    if (res?.ihLastInstalledVersion === version) return;
+
+    const payload = { version, ts: Date.now() };
+    chrome.storage.local.set({ ihLastInstalledVersion: version, ihUpdateBanner: payload }, () => {
+      chrome.runtime.sendMessage(
+        {
+          type: 'ih-show-update-banner',
+          version: payload.version
+        },
+        () => {
+          void chrome.runtime.lastError;
+        }
+      );
+    });
+  });
+});

@@ -58,7 +58,7 @@
     }
   }
 
-  // Kept name used by start.js
+  // Kept name used by index.js
   function linkifyEcli(root) {
     applyHighlightsAndLinks(root);
     return 0;

@@ -225,9 +225,71 @@
     });
   }
 
+  function showUpdateBanner(version) {
+    if (!document.body || document.getElementById('ih-update-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'ih-update-banner';
+    banner.className = 'ih-update-banner';
+
+    const text = document.createElement('div');
+    text.className = 'ih-update-banner-text';
+    text.textContent = `Better Infocuria updated${version ? ` to v${version}` : ''}.`;
+
+    const link = document.createElement('a');
+    link.className = 'ih-update-banner-link';
+    link.href = 'https://github.com/rafjaf/Infocuria';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'See what changed';
+
+    const close = document.createElement('button');
+    close.className = 'ih-update-banner-close';
+    close.type = 'button';
+    close.textContent = 'Dismiss';
+    close.addEventListener('click', () => banner.remove());
+
+    const left = document.createElement('div');
+    left.className = 'ih-update-banner-left';
+    left.appendChild(text);
+    left.appendChild(link);
+
+    banner.appendChild(left);
+    banner.appendChild(close);
+    document.body.appendChild(banner);
+
+    window.requestAnimationFrame(() => banner.classList.add('ih-update-banner-visible'));
+    window.setTimeout(() => banner.remove(), 8000);
+  }
+
+  function initUpdateBanner() {
+    if (window.top !== window) return;
+    if (window.__ihUpdateBannerBound) return;
+    window.__ihUpdateBannerBound = true;
+
+    if (chrome?.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener((msg) => {
+        if (msg?.type === 'ih-show-update-banner') {
+          showUpdateBanner(msg.version);
+        }
+      });
+    }
+
+    if (chrome?.storage?.local) {
+      chrome.storage.local.get('ihUpdateBanner', (res) => {
+        const payload = res?.ihUpdateBanner;
+        if (payload?.version) {
+          showUpdateBanner(payload.version);
+          chrome.storage.local.remove('ihUpdateBanner');
+        }
+      });
+    }
+  }
+
   function init() {
     initObserver();
     initCopyInterceptor();
+    initUpdateBanner();
     scheduleUpdate('init');
 
     // Extra kick for SPA layouts that mount late.
