@@ -7,9 +7,9 @@ Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
 
 ## What it does
 
-- Adds a citation panel with ready-to-copy references, including paragraph links and ECLI markup.
+- Adds a citation panel with ready-to-copy references, including the paragraph number from which the text was copied.
 - Builds a document table of contents for fast navigation within a judgment.
-- Highlights structure markers and converts ECLI references into clickable links.
+- Highlights structure markers in the the text.
 - Provides cleaner PDF downloads with friendly filenames.
 - Shows a quick info popup when you click the extension icon.
 - Displays a brief update banner after new versions are installed.
@@ -17,6 +17,10 @@ Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
 ## Where it runs
 
 - https://infocuria.curia.europa.eu/*
+
+## Limitation
+
+- Currently it only works on the French version of Infocuria.
 
 ## Permissions
 
