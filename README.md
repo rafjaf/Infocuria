@@ -39,6 +39,10 @@ Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
 2. In Chrome, open chrome://extensions and enable Developer mode.
 3. Click “Load unpacked” and select this folder.
 
+## Data protection
+
+No personal data whatsoever is treated by this extension.
+
 ## Feedback
 
 Issues and pull requests are welcome at https://github.com/rafjaf/Infocuria.
