@@ -5,6 +5,8 @@ Better Infocuria is a Chrome extension that improves how you read and cite Court
 GitHub: https://github.com/rafjaf/Infocuria
 Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
 
+![[screenshot.png]]
+
 ## What it does
 
 - Adds a citation panel with ready-to-copy references, including the paragraph number from which the text was copied.
