@@ -5,7 +5,7 @@ Better Infocuria is a Chrome extension that improves how you read and cite Court
 GitHub: https://github.com/rafjaf/Infocuria
 Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
 
-![[screenshot.png]]
+![](screenshot.png)
 
 ## What it does
 
