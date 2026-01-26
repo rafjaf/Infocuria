@@ -3,7 +3,7 @@
 Better Infocuria is a Chrome extension that improves how you read and cite Court of Justice of the European Union judgments on Infocuria.
 
 GitHub: https://github.com/rafjaf/Infocuria
-Chrome Web Store: <ADD_CHROME_WEB_STORE_URL_HERE>
+Chrome Web Store: https://chromewebstore.google.com/detail/better-infocuria/kemkbakjbjfcmaibmbjfkeconcnnnopn
 
 ![](screenshot.png)
 
