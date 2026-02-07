@@ -227,7 +227,8 @@ button[aria-label="Fermer"][aria-describedby="sheet-header-tooltip-close"] {
 }
 
 #panel-document-preview p {
-  margin: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 #panel-document-preview p + p {

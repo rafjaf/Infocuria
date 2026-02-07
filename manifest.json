@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Better Infocuria",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Adds a citation panel, copy helper, and PDF download shortcut on Infocuria judgment pages.",
   "icons": {
     "16": "icons/icon16.png",
@@ -15,7 +15,8 @@
   ],
   "background": {
     "service_worker": "src/background.js",
-    "type": "module"
+    "type": "module",
+    "scripts": ["src/background.js"]
   },
   "content_scripts": [
     {
@@ -37,5 +38,13 @@
   "action": {
     "default_title": "Better Infocuria",
     "default_popup": "popup.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{e7f4c9a1-3b2f-4d6a-9c12-0f8a7b6c5d4e}",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
   }
 }
