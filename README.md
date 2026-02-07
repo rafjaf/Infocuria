@@ -4,7 +4,7 @@ Better Infocuria is a browser extension that improves how you read and cite Cour
 
 GitHub: https://github.com/rafjaf/Infocuria
 Chrome Web Store: https://chromewebstore.google.com/detail/better-infocuria/kemkbakjbjfcmaibmbjfkeconcnnnopn
-Firefox Add-ons : <TO BE COMPLETED>
+Firefox Add-ons : https://addons.mozilla.org/en-US/firefox/addon/better-infocuria/
 
 ![](screenshot.png)
 
