@@ -56,3 +56,4 @@ Issues and pull requests are welcome at https://github.com/rafjaf/Infocuria.
 
 - 0.1.0 : first version
 - 0.1.1 : fixed paragraphs numbering issue
+- 0.1.2 : fixed extension to work on older judgements such as [Van Uden](https://infocuria.curia.europa.eu/tabs/affair?lang=FR&publishedId=%22C-391%2F95%22&searchTerm=%22C-391%2F95%22)

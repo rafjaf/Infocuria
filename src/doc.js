@@ -52,7 +52,10 @@
   }
 
   function extractDateFromPreview(texts) {
-    for (const t of texts.slice(0, 10)) {
+    // Filter out empty paragraphs before scanning: older judgments can have many
+    // leading empty <p> elements that push the date line beyond a fixed-index limit.
+    const candidates = texts.filter((t) => t).slice(0, 10);
+    for (const t of candidates) {
       const di = BI.parseFrenchDateFromLine(t);
       if (di) return di;
     }

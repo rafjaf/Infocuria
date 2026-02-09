@@ -53,6 +53,16 @@
 
     let num = extractFromText(targetEl.innerText || targetEl.textContent);
     if (num == null) {
+      const dd = targetEl.closest('dd');
+      if (dd && (!previewRoot || previewRoot.contains(dd))) {
+        const dt = dd.previousElementSibling;
+        if (dt && dt.tagName === 'DT') {
+          num = extractFromText(dt.innerText || dt.textContent);
+          if (num != null) return { number: num, element: dd };
+        }
+      }
+    }
+    if (num == null) {
       const p = targetEl.closest('p');
       if (!p) return null;
       if (previewRoot && !previewRoot.contains(p)) return null;

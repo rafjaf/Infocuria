@@ -21,7 +21,7 @@
   }
 
   function stripTrailingFootnote(s) {
-    return normalizeSpaces(String(s || '').replace(/\(\s*\*\s*\)\s*$/, ''));
+    return normalizeSpaces(String(s || '').replace(/\(\s*(?:\*|\d+)\s*\)\s*$/, ''));
   }
 
   function parseFrenchDateFromLine(line) {
