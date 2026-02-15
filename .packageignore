@@ -1,8 +1,10 @@
 # Files ignored for the build of the extension
 .packageignore
+.gitignore
 README.md
 .git/
 .github/
+.playwright-mcp/
 .vscode/
 node_modules/
 dist/
@@ -15,3 +17,4 @@ manifest.chrome.json
 manifest.firefox.json
 LICENSE
 doc/
+screenshot.png
