@@ -5,6 +5,19 @@ function extractCelexId(url) {
   return m ? m[1].toUpperCase() : null;
 }
 
+async function ensurePdfResponse(url) {
+  const resp = await fetch(url, {
+    method: 'HEAD',
+    redirect: 'follow',
+    credentials: 'omit',
+  });
+
+  const contentType = resp.headers.get('content-type') || '';
+  if (!resp.ok || !/\bapplication\/pdf\b/i.test(contentType)) {
+    throw new Error(`Expected a PDF response, got ${contentType || `HTTP ${resp.status}`}`);
+  }
+}
+
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   const celex = extractCelexId(item.finalUrl || item.url);
   if (!celex) return;
@@ -32,12 +45,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       const celex = extractCelexId(msg.url);
-      if (celex && filename) {
-        // Ensure we can override any server-provided filename like "CELEX_...".
-        pendingFilenamesByCelex.set(celex, { filename, ts: Date.now() });
-      }
-
       try {
+        await ensurePdfResponse(msg.url);
+
+        if (celex && filename) {
+          // Ensure we can override any server-provided filename like "CELEX_...".
+          pendingFilenamesByCelex.set(celex, { filename, ts: Date.now() });
+        }
+
         const downloadId = await chrome.downloads.download({
           url: msg.url,
           filename,

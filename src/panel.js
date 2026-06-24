@@ -116,6 +116,7 @@
             return;
           }
           if (resp && resp.ok) toast('Download started.');
+          else toast(`Download failed${resp?.error ? `: ${resp.error}` : '.'}`);
         });
 
         return;
