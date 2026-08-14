@@ -35,9 +35,9 @@
   function inferHeadingLevelFromClass(p) {
     if (!p) return null;
     const className = p.className || '';
-    const m = className.match(/\bC\d{2}Titre(\d+)\b/);
+    const m = className.match(/\bC\d{2}Titre(?:numerote)?(\d+)\b/i);
     if (m) return Number(m[1]);
-    const m2 = className.match(/\bTitre(\d+)\b/);
+    const m2 = className.match(/\bTitre(?:numerote)?(\d+)\b/i);
     if (m2) return Number(m2[1]);
     return null;
   }
@@ -71,8 +71,9 @@
 
       const lvlFromClass = inferHeadingLevelFromClass(p);
 
-      // Ignore numbered paragraphs (points)
-      if (/^\d+\b/.test(text)) continue;
+      // Ignore numbered body paragraphs (points), but keep numbered headings
+      // whose hierarchy is explicitly identified by an Infocuria class.
+      if (!lvlFromClass && /^\d+\b/.test(text)) continue;
 
       const looksLikeHeading = Boolean(lvlFromClass) || headingPatterns.some((re) => re.test(text));
 

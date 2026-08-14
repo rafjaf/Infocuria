@@ -33,11 +33,6 @@ Firefox Add-ons : https://addons.mozilla.org/en-US/firefox/addon/better-infocuri
 - clipboardWrite: copy rich citations to the clipboard.
 - storage: remember whether the update banner has been shown.
 
-## Install
-
-1. Open the Chrome Web Store listing: <ADD_CHROME_WEB_STORE_URL_HERE>
-2. Click “Add to Chrome”.
-
 ## Development
 
 1. Clone this repo.
@@ -59,3 +54,4 @@ Issues and pull requests are welcome at https://github.com/rafjaf/Infocuria.
 - 0.1.2 : fixed extension to work on older judgements such as [Van Uden](https://infocuria.curia.europa.eu/tabs/affair?lang=FR&publishedId=%22C-391%2F95%22&searchTerm=%22C-391%2F95%22)
 - 0.1.3 : manifest.json split into two different files for Chrome and Firefox to avoid warning regarding incorrect Manifest V3 syntax
 - 0.1.4 : fixed Download button and reference to advocate general's opinion.
+- 0.1.5 : fixed some table of content incomplete in some judgements of the Grand Chamber
