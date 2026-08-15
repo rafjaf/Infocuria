@@ -41,7 +41,7 @@ Firefox Add-ons : https://addons.mozilla.org/en-US/firefox/addon/better-infocuri
 
 ## Data protection
 
-No personal data whatsoever is treated by this extension.
+Better Infocuria does not collect or transmit personal information. Judgment content and user-selected text are processed locally solely to provide the extension’s citation, navigation, highlighting, and PDF-download features. More information are available [here](https://github.com/rafjaf/Infocuria/blob/main/PRIVACY.md).
 
 ## Feedback
 
